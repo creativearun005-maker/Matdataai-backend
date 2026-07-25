@@ -113,22 +113,33 @@ def remove_duplicate_boxes(boxes):
 
 import cv2
 
-_face_cascade = None
+class _FaceResult:
+    """Mimics insightface's face-result object shape (has .det_score)."""
+    def __init__(self, det_score):
+        self.det_score = det_score
 
-def get_face_detector():
-    global _face_cascade
-    if _face_cascade is None:
-        _face_cascade = cv2.CascadeClassifier(
+class _CascadeFaceApp:
+    """Drop-in replacement for insightface's FaceAnalysis — same .get(img) interface."""
+    def __init__(self):
+        self.detector = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
-    return _face_cascade
 
-def check_face_confidence(image_np):
-    """Returns True if a face is detected in the crop, False otherwise."""
-    detector = get_face_detector()
-    gray = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
-    faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-    return len(faces) > 0
+    def get(self, img):
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img
+        faces = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        # return objects shaped like insightface's output, so rest of the code
+        # (which reads .det_score) doesn't need to change at all
+        return [_FaceResult(det_score=0.95) for _ in faces]
+
+
+_face_app = None
+
+def get_face_app():
+    global _face_app
+    if _face_app is None:
+        _face_app = _CascadeFaceApp()
+    return _face_app
 
 
 # ======================================================================
