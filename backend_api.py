@@ -35,10 +35,6 @@ RESULT_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="MatdataAI Processing API")
 
-@app.get("/")
-async def root():
-    return {"status": "MatdataAI backend is running"}
-
 # CORS: allow requests from your GitHub Pages domain.
 # Replace with your actual site URL(s) — never leave "*" in production
 # once this is public, since it's an expensive endpoint (OCR compute).
@@ -60,14 +56,24 @@ jobs = {}
 def _run_job(job_id: str, pdf_path: Path):
     jobs[job_id]["status"] = "processing"
     try:
-        df = process_pdf(pdf_path)
-        excel_src = df.attrs.get("excel_path")
+        # process_pdf() returns a dict:
+        # {"main_path":..., "review_path":..., "n_entries":..., "n_flagged":...}
+        result = process_pdf(str(pdf_path), output_dir=str(RESULT_DIR / job_id))
+
         excel_dst = RESULT_DIR / f"{job_id}.xlsx"
-        shutil.copy(excel_src, excel_dst)
+        shutil.copy(result["main_path"], excel_dst)
+
+        review_dst = None
+        if result.get("review_path"):
+            review_dst = RESULT_DIR / f"{job_id}_review.xlsx"
+            shutil.copy(result["review_path"], review_dst)
+
         jobs[job_id].update({
             "status": "done",
-            "entries": len(df),
+            "entries": result["n_entries"],
+            "flagged": result["n_flagged"],
             "excel_path": str(excel_dst),
+            "review_path": str(review_dst) if review_dst else None,
             "finished_at": datetime.utcnow().isoformat(),
         })
     except Exception as e:
@@ -109,5 +115,17 @@ async def download_result(job_id: str):
     return FileResponse(
         job["excel_path"],
         filename="matdataai_output.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.get("/api/download/{job_id}/review")
+async def download_review(job_id: str):
+    job = jobs.get(job_id)
+    if not job or job["status"] != "done" or not job.get("review_path"):
+        raise HTTPException(404, "No review sheet for this job")
+    return FileResponse(
+        job["review_path"],
+        filename="matdataai_review.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
