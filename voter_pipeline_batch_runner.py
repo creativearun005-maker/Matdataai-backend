@@ -32,6 +32,7 @@ def extract_epic_with_mistral(crop_image_np):
     """Sends a small cropped image to Mistral's Pixtral (vision) model to read
     the EPIC (voter ID) number. Returns the EPIC string, or None on failure."""
     if not MISTRAL_API_KEY:
+        print("[MISTRAL EPIC ERROR] MISTRAL_API_KEY is empty/not set!")
         return None
     try:
         success, buf = cv2.imencode('.jpg', crop_image_np)
