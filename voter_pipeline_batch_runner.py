@@ -112,12 +112,15 @@ def remove_duplicate_boxes(boxes):
 
 
 def get_face_app():
-    """Lazy-load insightface — avoids paying import cost until actually needed."""
     global _face_app
     if _face_app is None:
         from insightface.app import FaceAnalysis
-        _face_app = FaceAnalysis(providers=['CPUExecutionProvider'])
-        _face_app.prepare(ctx_id=0, det_size=(320, 320))
+        _face_app = FaceAnalysis(
+            name='buffalo_s',              # small model (~15 MB, na ki 281 MB)
+            allowed_modules=['detection'],  # sirf detection load karo, recognition/landmarks/age-gender skip
+            providers=['CPUExecutionProvider']
+        )
+        _face_app.prepare(ctx_id=0, det_size=(256, 256))
     return _face_app
 
 
