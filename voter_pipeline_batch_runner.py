@@ -58,7 +58,6 @@ def extract_epic_with_gemini(crop_image_np):
         return None if text.upper() == "NONE" else text
     except Exception:
         return None  # graceful fail — row still gets processed, EPIC left blank
-
 # insightface is optional at import-time (heavy dep) — loaded lazily in get_face_app()
 _face_app = None
 
@@ -376,6 +375,8 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
         epic_box = get_epic_region(photo_box)
         ex, ey, ew, eh = epic_box
         epic_crop = img[max(0, ey):ey + eh, max(0, ex):ex + ew]
+        epic_number = extract_epic_with_gemini(epic_crop) if epic_crop.size > 0 else None
+        time.sleep(0.5)  # free-tier rate-limit ke against safety margin
         cv2.imwrite(f'/tmp/debug_epic_{idx}.png', epic_crop)  # temporary — visual check
 
         tx, ty, tw, th = get_text_region(photo_box)
