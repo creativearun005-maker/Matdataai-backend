@@ -66,7 +66,8 @@ def extract_epic_with_mistral(crop_image_np):
         resp.raise_for_status()
         text = resp.json()["choices"][0]["message"]["content"].strip()
         return None if text.upper() == "NONE" else text
-    except Exception:
+    except Exception as e:
+        print(f"[MISTRAL EPIC ERROR] {type(e).__name__}: {e}")
         return None
 # insightface is optional at import-time (heavy dep) — loaded lazily in get_face_app()
 _face_app = None
