@@ -111,17 +111,24 @@ def remove_duplicate_boxes(boxes):
     return kept
 
 
-def get_face_app():
-    global _face_app
-    if _face_app is None:
-        from insightface.app import FaceAnalysis
-        _face_app = FaceAnalysis(
-            name='buffalo_s',              # small model (~15 MB, na ki 281 MB)
-            allowed_modules=['detection'],  # sirf detection load karo, recognition/landmarks/age-gender skip
-            providers=['CPUExecutionProvider']
+import cv2
+
+_face_cascade = None
+
+def get_face_detector():
+    global _face_cascade
+    if _face_cascade is None:
+        _face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
-        _face_app.prepare(ctx_id=0, det_size=(256, 256))
-    return _face_app
+    return _face_cascade
+
+def check_face_confidence(image_np):
+    """Returns True if a face is detected in the crop, False otherwise."""
+    detector = get_face_detector()
+    gray = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
+    faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+    return len(faces) > 0
 
 
 # ======================================================================
