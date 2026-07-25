@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pandas
+openpyxl
+opencv-python-headless
+pytesseract
+insightface
+onnxruntime
