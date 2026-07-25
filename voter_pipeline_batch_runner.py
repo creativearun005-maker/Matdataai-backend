@@ -482,7 +482,7 @@ def build_excel_from_entries(all_entries, output_path, village_number, part_no, 
         ws.row_dimensions[row_idx].height = row_height_pt
 
         ws.cell(row=row_idx, column=1, value=None)
-       ws.cell(row=row_idx, column=3, value=e.get('epic_number'))
+        ws.cell(row=row_idx, column=3, value=e.get('epic_number'))
         ws.cell(row=row_idx, column=4, value=parsed.get('name'))
         ws.cell(row=row_idx, column=5, value=_relation_display(parsed))
         ws.cell(row=row_idx, column=6, value=parsed.get('house_no'))
