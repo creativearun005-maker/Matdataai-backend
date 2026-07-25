@@ -63,7 +63,7 @@ def extract_epic_with_mistral(crop_image_np):
                 }
             ],
         }
-        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        resp = requests.post(url, headers=headers, json=payload, timeout=45)
         resp.raise_for_status()
         text = resp.json()["choices"][0]["message"]["content"].strip()
         return None if text.upper() == "NONE" else text
