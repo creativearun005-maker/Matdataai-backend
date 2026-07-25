@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 python-multipart
 pandas
-numpy
+numpy==1.26.4
 openpyxl
 Pillow
 PyMuPDF
