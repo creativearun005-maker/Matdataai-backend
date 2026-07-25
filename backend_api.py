@@ -15,6 +15,7 @@ Endpoints:
     GET  /api/download/{job_id} -> the generated .xlsx file
 """
 
+import os
 import uuid
 import shutil
 import threading
