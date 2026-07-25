@@ -20,6 +20,45 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from PIL import Image as PILImage
 from difflib import SequenceMatcher
 
+import requests
+import base64
+import time
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-2.5-flash-lite"
+
+
+def extract_epic_with_gemini(crop_image_np):
+    """Sends a small cropped image to Gemini to read the EPIC (voter ID) number.
+    Returns the EPIC string, or None if extraction fails / key not configured."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        success, buf = cv2.imencode('.jpg', crop_image_np)
+        if not success:
+            return None
+        img_b64 = base64.b64encode(buf).decode('utf-8')
+
+        url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+               f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}")
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": "This is a crop from an Indian voter-list PDF. It contains an "
+                             "EPIC (voter ID) number, alphanumeric like 'UP/84/417/0198404' or "
+                             "'GBY2781292'. Reply with ONLY the EPIC number, nothing else. "
+                             "If none is visible, reply exactly: NONE"},
+                    {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
+                ]
+            }]
+        }
+        resp = requests.post(url, json=payload, timeout=15)
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return None if text.upper() == "NONE" else text
+    except Exception:
+        return None  # graceful fail — row still gets processed, EPIC left blank
+
 # insightface is optional at import-time (heavy dep) — loaded lazily in get_face_app()
 _face_app = None
 
@@ -33,6 +72,15 @@ def render_page(doc, page_index, dpi=100):
     pix = page.get_pixmap(dpi=dpi)
     img = Image.open(io.BytesIO(pix.tobytes("png")))
     return np.array(img.convert('RGB'))
+
+
+def get_epic_region(photo_box, cell_width=393, strip_height=40, padding=3):
+    """The EPIC code + serial number sit in a strip ABOVE the photo, spanning
+    the cell width — this crops that strip."""
+    px, py, pw, ph = photo_box
+    cell_x = max(0, px + pw - cell_width)
+    epic_y = max(0, py - strip_height - padding)
+    return (cell_x, epic_y, cell_width, strip_height)
 
 
 def detect_column_count(img_array):
@@ -324,6 +372,11 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
         photo_crop_path = f'/tmp/crops/{page_id}_entry{idx:02d}_photo.png'
         os.makedirs('/tmp/crops', exist_ok=True)
         cv2.imwrite(photo_crop_path, face_crop)
+        # --- EPIC extraction (debug step first) ---
+        epic_box = get_epic_region(photo_box)
+        ex, ey, ew, eh = epic_box
+        epic_crop = img[max(0, ey):ey + eh, max(0, ex):ex + ew]
+        cv2.imwrite(f'/tmp/debug_epic_{idx}.png', epic_crop)  # temporary — visual check
 
         tx, ty, tw, th = get_text_region(photo_box)
         text_crop = img[max(0, ty):ty + th, max(0, tx):tx + tw]
@@ -429,7 +482,7 @@ def build_excel_from_entries(all_entries, output_path, village_number, part_no, 
         ws.row_dimensions[row_idx].height = row_height_pt
 
         ws.cell(row=row_idx, column=1, value=None)
-        ws.cell(row=row_idx, column=3, value=None)   # EPIC — not extracted yet
+       ws.cell(row=row_idx, column=3, value=e.get('epic_number'))
         ws.cell(row=row_idx, column=4, value=parsed.get('name'))
         ws.cell(row=row_idx, column=5, value=_relation_display(parsed))
         ws.cell(row=row_idx, column=6, value=parsed.get('house_no'))
