@@ -371,9 +371,10 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
 # ======================================================================
 
 COLUMNS = [
-    "", "Photo", "Anubhag Sankhya aur Naam", "Village Number", "Bhag Sankhya",
-    "Kram Sankhya", "Pehchan Patra Number (EPIC)", "Naam", "Pita / Pati ka Naam",
-    "Makan Number", "Mobile Number", "Jaati", "Aadhar", "Aayu", "Ling",
+    "", "Photo", "EPIC Number / पहचान पत्र संख्या", "Name / नाम",
+    "Father's/Husband's Name / पिता/पति का नाम", "House Number / मकान संख्या",
+    "Mobile Number / मोबाइल नंबर", "Caste / जाति", "Aadhar / आधार",
+    "Age / आयु", "Gender / लिंग",
 ]
 
 
@@ -428,19 +429,15 @@ def build_excel_from_entries(all_entries, output_path, village_number, part_no, 
         ws.row_dimensions[row_idx].height = row_height_pt
 
         ws.cell(row=row_idx, column=1, value=None)
-        ws.cell(row=row_idx, column=3, value=anubhag)
-        ws.cell(row=row_idx, column=4, value=village_number)
-        ws.cell(row=row_idx, column=5, value=part_no)
-        ws.cell(row=row_idx, column=6, value=e['entry_idx'])
-        ws.cell(row=row_idx, column=7, value=None)  # EPIC — not extracted yet
-        ws.cell(row=row_idx, column=8, value=parsed.get('name'))
-        ws.cell(row=row_idx, column=9, value=_relation_display(parsed))
-        ws.cell(row=row_idx, column=10, value=parsed.get('house_no'))
-        ws.cell(row=row_idx, column=11, value=None)   # mobile — Phase 5
-        ws.cell(row=row_idx, column=12, value=None)   # jaati — TBD
-        ws.cell(row=row_idx, column=13, value=None)   # aadhar — Phase 5
-        ws.cell(row=row_idx, column=14, value=parsed.get('age'))
-        ws.cell(row=row_idx, column=15, value=parsed.get('gender'))
+        ws.cell(row=row_idx, column=3, value=None)   # EPIC — not extracted yet
+        ws.cell(row=row_idx, column=4, value=parsed.get('name'))
+        ws.cell(row=row_idx, column=5, value=_relation_display(parsed))
+        ws.cell(row=row_idx, column=6, value=parsed.get('house_no'))
+        ws.cell(row=row_idx, column=7, value=None)   # mobile — Phase 5
+        ws.cell(row=row_idx, column=8, value=None)   # jaati — TBD
+        ws.cell(row=row_idx, column=9, value=None)   # aadhar — Phase 5
+        ws.cell(row=row_idx, column=10, value=parsed.get('age'))
+        ws.cell(row=row_idx, column=11, value=parsed.get('gender'))
 
         _embed_image(ws, e['photo_crop_path'], f"B{row_idx}", photo_target_width_px)
 
