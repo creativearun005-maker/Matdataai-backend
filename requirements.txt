@@ -8,5 +8,3 @@ Pillow
 PyMuPDF
 opencv-python-headless
 pytesseract
-insightface
-onnxruntime
