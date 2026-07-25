@@ -53,6 +53,11 @@ app.add_middleware(
 jobs = {}
 
 
+@app.get("/")
+async def root():
+    return {"status": "MatdataAI backend is running"}
+
+
 def _run_job(job_id: str, pdf_path: Path):
     jobs[job_id]["status"] = "processing"
     try:
