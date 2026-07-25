@@ -134,3 +134,13 @@ async def download_review(job_id: str):
         filename="matdataai_review.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+from fastapi.responses import FileResponse as FR
+
+@app.get("/debug/epic/{idx}")
+async def debug_epic_crop(idx: int):
+    path = f"/tmp/debug_epic_{idx}.png"
+    if not os.path.exists(path):
+        raise HTTPException(404, f"No debug crop at index {idx}")
+    return FR(path, media_type="image/png")
