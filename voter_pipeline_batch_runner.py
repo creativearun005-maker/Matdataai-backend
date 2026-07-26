@@ -590,7 +590,8 @@ def process_pdf(pdf_path, village_number="", output_dir="/tmp/output"):
         page = doc[page_num]
         pix = page.get_pixmap(dpi=150)
         img_pil = Image.open(io.BytesIO(pix.tobytes("png")))
-        temp_path = f'/tmp/temp_page_{page_num}.png'
+        pdf_stem = os.path.splitext(os.path.basename(pdf_path))[0]
+        temp_path = f'/tmp/temp_{pdf_stem}_page_{page_num}.png'
         img_pil.save(temp_path)
 
         page_id = f"{os.path.splitext(os.path.basename(pdf_path))[0]}_page{page_num}"
