@@ -29,17 +29,18 @@ MISTRAL_MODEL = "pixtral-12b-2409"
 
 
 def extract_epic_with_mistral(crop_image_np):
-    """Sends a small cropped image to Mistral's Pixtral (vision) model to read
-    the EPIC (voter ID) number. Returns the EPIC string, or None on failure."""
     if not MISTRAL_API_KEY:
-        print("[MISTRAL EPIC ERROR] MISTRAL_API_KEY is empty/not set!")
+        print("[MISTRAL DEBUG] API key is empty!")
         return None
     try:
         success, buf = cv2.imencode('.jpg', crop_image_np)
         if not success:
+            print("[MISTRAL DEBUG] cv2.imencode failed on crop!")
             return None
         img_b64 = base64.b64encode(buf).decode('utf-8')
         data_url = f"data:image/jpeg;base64,{img_b64}"
+
+        print(f"[MISTRAL DEBUG] Sending request... (image size: {len(buf)} bytes)")
 
         url = "https://api.mistral.ai/v1/chat/completions"
         headers = {
@@ -48,25 +49,34 @@ def extract_epic_with_mistral(crop_image_np):
         }
         payload = {
             "model": MISTRAL_MODEL,
+            "temperature": 0,
             "messages": [
                 {
                     "role": "user",
                     "content": [
+                        {"type": "image_url", "image_url": data_url},
                         {"type": "text", "text": (
                             "This is a crop from an Indian voter-list PDF. It contains an "
                             "EPIC (voter ID) number, alphanumeric like 'UP/84/417/0198404' or "
                             "'GBY2781292'. Reply with ONLY the EPIC number, nothing else. "
                             "If none is visible, reply exactly: NONE"
                         )},
-                        {"type": "image_url", "image_url": data_url},
                     ],
                 }
             ],
         }
         resp = requests.post(url, headers=headers, json=payload, timeout=45)
+        print(f"[MISTRAL DEBUG] Response status: {resp.status_code}")
+        print(f"[MISTRAL DEBUG] Raw response body: {resp.text[:500]}")
+
         resp.raise_for_status()
-        text = resp.json()["choices"][0]["message"]["content"].strip()
-        return None if text.upper() == "NONE" else text
+        content = resp.json()["choices"][0]["message"]["content"]
+        print(f"[MISTRAL DEBUG] content type={type(content)}, value={content!r}")
+
+        text = content.strip() if isinstance(content, str) else str(content).strip()
+        result = None if text.upper() == "NONE" else text
+        print(f"[MISTRAL DEBUG] Final extracted value: {result!r}")
+        return result
     except Exception as e:
         print(f"[MISTRAL EPIC ERROR] {type(e).__name__}: {e}")
         return None
