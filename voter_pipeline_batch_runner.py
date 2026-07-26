@@ -417,7 +417,7 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
         text_crop = img[max(0, ty):ty + th, max(0, tx):tx + tw]
 
         if text_crop.size == 0:
-           page_results.append({
+            page_results.append({
                 'entry_idx': idx, 'photo_box': photo_box, 'photo_crop_path': photo_crop_path,
                 'face_confidence': round(float(face_confidence), 3),
                 'parsed': None, 'error': 'empty_crop', 'review_crop_path': None,
