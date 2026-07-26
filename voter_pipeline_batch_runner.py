@@ -33,16 +33,13 @@ def extract_epic_with_mistral(crop_image_np):
         print("[MISTRAL DEBUG] API key is empty!")
         return None
     try:
-        if crop_image_np.shape[0] < 100:  # agar bahut chhota crop hai
+        if crop_image_np.shape[0] < 100:
             crop_image_np = cv2.resize(crop_image_np, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
         success, buf = cv2.imencode('.jpg', crop_image_np, [cv2.IMWRITE_JPEG_QUALITY, 100])
         if not success:
-            print("[MISTRAL DEBUG] cv2.imencode failed on crop!")
             return None
         img_b64 = base64.b64encode(buf).decode('utf-8')
         data_url = f"data:image/jpeg;base64,{img_b64}"
-
-        print(f"[MISTRAL DEBUG] Sending request... (image size: {len(buf)} bytes)")
 
         url = "https://api.mistral.ai/v1/chat/completions"
         headers = {
@@ -50,35 +47,34 @@ def extract_epic_with_mistral(crop_image_np):
             "Content-Type": "application/json",
         }
         payload = {
-    "model": MISTRAL_MODEL,
-    "temperature": 0,
-    "messages": [
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": (
-                    "This is a crop from an Indian voter-list PDF. "
-                    "The EPIC (voter ID) number is on the RIGHT side of this crop. "
-                    "The number on the LEFT side is just a page/serial number — ignore it. "
-                    "The EPIC number is in one of these formats: "
-                    "slash-separated like XX/00/000/0000000, "
-                    "or 3-letters-plus-digits like XXX0000000 "
-                    "(the letters and digits above are just placeholders for the pattern). "
-                    "Read and reply with ONLY the exact EPIC number visible in this image, nothing else. "
-                    "If no EPIC number is clearly visible, reply exactly: NONE"
-                )},
+            "model": "pixtral-12b-2409",
+            "temperature": 0.2,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": (
+                            "Read the alphanumeric voter ID code printed on the RIGHT side "
+                            "of this image (ignore any plain number on the left, that's just "
+                            "a serial number). Reply with your best guess of the code, even if "
+                            "you're not 100% sure — only reply 'NONE' if there is truly no "
+                            "code visible at all."
+                        )},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }
             ],
         }
-    ],
-}
         resp = requests.post(url, headers=headers, json=payload, timeout=45)
         print(f"[MISTRAL DEBUG] Response status: {resp.status_code}")
         print(f"[MISTRAL DEBUG] Raw response body: {resp.text[:500]}")
-
         resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"]
-        print(f"[MISTRAL DEBUG] content type={type(content)}, value={content!r}")
 
+        response_json = resp.json()
+        actual_model_used = response_json.get("model", "unknown")
+        print(f"[MISTRAL DEBUG] Model actually used: {actual_model_used}")
+
+        content = response_json["choices"][0]["message"]["content"]
         text = content.strip() if isinstance(content, str) else str(content).strip()
         result = None if text.upper() == "NONE" else text
         print(f"[MISTRAL DEBUG] Final extracted value: {result!r}")
