@@ -33,7 +33,9 @@ def extract_epic_with_mistral(crop_image_np):
         print("[MISTRAL DEBUG] API key is empty!")
         return None
     try:
-        success, buf = cv2.imencode('.jpg', crop_image_np)
+        if crop_image_np.shape[0] < 100:  # agar bahut chhota crop hai
+            crop_image_np = cv2.resize(crop_image_np, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+        success, buf = cv2.imencode('.jpg', crop_image_np, [cv2.IMWRITE_JPEG_QUALITY, 100])
         if not success:
             print("[MISTRAL DEBUG] cv2.imencode failed on crop!")
             return None
@@ -399,6 +401,9 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
         epic_crop = img[max(0, ey):ey + eh, max(0, ex):ex + ew]
         print(f"[EPIC DEBUG] Processing entry idx={idx}...")
         epic_number = extract_epic_with_mistral(epic_crop) if epic_crop.size > 0 else None
+        if epic_number is None and epic_crop.size > 0:
+            time.sleep(1)
+            epic_number = extract_epic_with_mistral(epic_crop)  # ek retry, agar pehli baar miss hua
         time.sleep(0.5)  # free-tier rate-limit ke against safety margin
         cv2.imwrite(f'/tmp/debug_epic_{idx}.png', epic_crop)  # temporary — visual check
 
