@@ -82,6 +82,59 @@ def extract_epic_with_mistral(crop_image_np):
     except Exception as e:
         print(f"[MISTRAL EPIC ERROR] {type(e).__name__}: {e}")
         return None
+
+
+def extract_mobile_with_mistral(crop_image_np):
+    """Raw crop bheja jata hai, koई color-isolation preprocessing nahi —
+    confirmed via testing ki Mistral khud handwriting ko print/photo se
+    alag kar leta hai, aur isolation-preprocessing accuracy kharab karti hai."""
+    if not MISTRAL_API_KEY:
+        return None
+    try:
+        success, buf = cv2.imencode('.jpg', crop_image_np, [cv2.IMWRITE_JPEG_QUALITY, 100])
+        if not success:
+            return None
+        img_b64 = base64.b64encode(buf).decode('utf-8')
+        data_url = f"data:image/jpeg;base64,{img_b64}"
+
+        url = "https://api.mistral.ai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {MISTRAL_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": "pixtral-12b-2409",
+            "temperature": 0.2,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": (
+                        "This image may contain a handwritten digit sequence in blue pen, "
+                        "possibly alongside printed text or a photo. Reply with your best guess "
+                        "of the handwritten digit sequence, even if not 100% sure — only reply "
+                        "'NONE' if there is truly no handwritten number visible at all."
+                    )},
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                ],
+            }],
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=45)
+        resp.raise_for_status()
+        content = resp.json()["choices"][0]["message"]["content"]
+        text = content.strip() if isinstance(content, str) else str(content).strip()
+        return None if text.upper() == "NONE" else text
+    except Exception as e:
+        print(f"[MISTRAL MOBILE ERROR] {type(e).__name__}: {e}")
+        return None
+
+
+def classify_handwritten_number(digit_str):
+    if not digit_str:
+        return None
+    digits_only = ''.join(c for c in digit_str if c.isdigit())
+    if len(digits_only) == 10 and digits_only[0] in '6789':
+        return digits_only
+    return None  # 12-digit Aadhaar-candidate ya unclassified — dormant abhi
 # insightface is optional at import-time (heavy dep) — loaded lazily in get_face_app()
 _face_app = None
 
@@ -395,7 +448,8 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
         photo_crop_path = f'/tmp/crops/{page_id}_entry{idx:02d}_photo.png'
         os.makedirs('/tmp/crops', exist_ok=True)
         cv2.imwrite(photo_crop_path, face_crop)
-        # --- EPIC extraction (debug step first) ---
+
+        # --- EPIC extraction ---
         epic_box = get_epic_region(photo_box)
         ex, ey, ew, eh = epic_box
         epic_crop = img[max(0, ey):ey + eh, max(0, ex):ex + ew]
@@ -403,9 +457,17 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
         epic_number = extract_epic_with_mistral(epic_crop) if epic_crop.size > 0 else None
         if epic_number is None and epic_crop.size > 0:
             time.sleep(1)
-            epic_number = extract_epic_with_mistral(epic_crop)  # ek retry, agar pehli baar miss hua
-        time.sleep(0.5)  # free-tier rate-limit ke against safety margin
-        cv2.imwrite(f'/tmp/debug_epic_{idx}.png', epic_crop)  # temporary — visual check
+            epic_number = extract_epic_with_mistral(epic_crop)
+        time.sleep(0.5)
+        cv2.imwrite(f'/tmp/debug_epic_{idx}.png', epic_crop)
+
+        # --- Mobile number extraction (handwritten, Phase 5) — ab sahi jagah pe ---
+        tx_temp, ty_temp, tw_temp, th_temp = get_text_region(photo_box)
+        hw_crop = img[ty_temp:ty_temp + th_temp + 15, tx_temp:tx_temp + tw_temp + 150]
+        mobile_number = None
+        if hw_crop.size > 0:
+            digit_result = extract_mobile_with_mistral(hw_crop)
+            mobile_number = classify_handwritten_number(digit_result)
 
         tx, ty, tw, th = get_text_region(photo_box)
         text_crop = img[max(0, ty):ty + th, max(0, tx):tx + tw]
@@ -415,7 +477,7 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
                 'entry_idx': idx, 'photo_box': photo_box, 'photo_crop_path': photo_crop_path,
                 'face_confidence': round(float(face_confidence), 3),
                 'parsed': None, 'error': 'empty_crop', 'review_crop_path': None,
-                'epic_number': epic_number,
+                'epic_number': epic_number, 'mobile_number': mobile_number,
             })
             continue
 
@@ -444,11 +506,10 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
             'entry_idx': idx, 'photo_box': photo_box, 'photo_crop_path': photo_crop_path,
             'face_confidence': round(float(face_confidence), 3),
             'parsed': parsed, 'error': None, 'review_crop_path': review_crop_path,
-            'epic_number': epic_number,
+            'epic_number': epic_number, 'mobile_number': mobile_number,
         })
 
     return page_results
-
 
 # ======================================================================
 # PHASE 3 — Excel generation (from generate_excel.py, kept as-is)
@@ -517,7 +578,7 @@ def build_excel_from_entries(all_entries, output_path, village_number, part_no, 
         ws.cell(row=row_idx, column=4, value=parsed.get('name'))
         ws.cell(row=row_idx, column=5, value=_relation_display(parsed))
         ws.cell(row=row_idx, column=6, value=parsed.get('house_no'))
-        ws.cell(row=row_idx, column=7, value=None)   # mobile — Phase 5
+        ws.cell(row=row_idx, column=7, value=e.get('mobile_number'))
         ws.cell(row=row_idx, column=8, value=None)   # jaati — TBD
         ws.cell(row=row_idx, column=9, value=None)   # aadhar — Phase 5
         ws.cell(row=row_idx, column=10, value=parsed.get('age'))
