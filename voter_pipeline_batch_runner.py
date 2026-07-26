@@ -397,6 +397,7 @@ def process_page(image_path, page_id=None, review_crop_dir='/tmp/review_crops'):
         epic_box = get_epic_region(photo_box)
         ex, ey, ew, eh = epic_box
         epic_crop = img[max(0, ey):ey + eh, max(0, ex):ex + ew]
+        print(f"[EPIC DEBUG] Processing entry idx={idx}...")
         epic_number = extract_epic_with_mistral(epic_crop) if epic_crop.size > 0 else None
         time.sleep(0.5)  # free-tier rate-limit ke against safety margin
         cv2.imwrite(f'/tmp/debug_epic_{idx}.png', epic_crop)  # temporary — visual check
