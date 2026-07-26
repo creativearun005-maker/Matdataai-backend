@@ -76,9 +76,8 @@ def extract_epic_with_mistral(crop_image_np):
         print(f"[MISTRAL DEBUG] content type={type(content)}, value={content!r}")
 
         text = content.strip() if isinstance(content, str) else str(content).strip()
-        result = None if text.upper() == "NONE" else text
-        print(f"[MISTRAL DEBUG] Final extracted value: {result!r}")
-        return result
+        print(f"[MISTRAL DEBUG] Final extracted value: {text!r}")
+        return text
     except Exception as e:
         print(f"[MISTRAL EPIC ERROR] {type(e).__name__}: {e}")
         return None
