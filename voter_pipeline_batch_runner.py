@@ -57,13 +57,16 @@ def extract_epic_with_mistral(crop_image_np):
                     "role": "user",
                     "content": [
                         {"type": "text", "text": (
-    "This is a crop from an Indian voter-list PDF. It contains an "
-    "EPIC (voter ID) number in ONE of these general formats: "
-    "slash-separated like 'XX/00/000/0000000', or 3-letters-plus-digits "
-    "like 'XXX0000000'. "
-    "Read ONLY the exact characters visible in THIS image — do not reuse "
-    "or guess based on any example format shown here. "
-    "Reply with ONLY the EPIC number exactly as printed in the image, nothing else. "
+                        "This is a crop from an Indian voter-list PDF. It contains an "
+                        "EPIC (voter ID) ID in ONE of these general formats:"
+                            "NOTE:- EPIC ID is in the right corner. on the left corner it is just the page number, ignore it"
+                            
+                        "slash-separated like 'XX/00/000/0000000', or 3-letters-plus-digits "
+                        "like 'XXX0000000'. "
+                            "NOTE:- XX and 00 are just for example"
+    "Read the EPIC visible in THIS image  "
+    ""
+    "Reply with the EPIC number as printed in the image, nothing else. "
     "If no EPIC number is clearly visible, reply exactly: NONE"
                         )},
                     ],
