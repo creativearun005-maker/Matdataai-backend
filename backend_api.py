@@ -42,7 +42,7 @@ app = FastAPI(title="MatdataAI Processing API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://<your-username>.github.io",   # <-- your GitHub Pages URL
+        "https://creativearun005-maker.github.io",   # <-- your GitHub Pages URL
         "http://localhost:5500",                # local testing (Live Server etc.)
     ],
     allow_methods=["POST", "GET"],
