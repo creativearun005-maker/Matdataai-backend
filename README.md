@@ -40,7 +40,7 @@ PDF → page-classification → photo crop → text-region crop → OCR → fiel
 **Stage 3 — Text extraction.** Tesseract (Hindi trained data) reads the text region derived relative to each photo-box position (not fixed absolute coordinates — this keeps extraction robust to minor page-to-page layout drift). Fields are parsed by a position-and-similarity-based labeller (first line is always the name(standard layout by the Election Commision); subsequent lines matched against known field labels via string similarity, tolerant of OCR noise in the label itself).
 
 **Stage 4 — Validation & review routing.** Numeric fields go through a character-confusion cleanup pass (OCR commonly confuses `1`/`]`/`|`, `0`/`O`, etc.). Any entry with an unresolved parsing issue is flagged, and its source crop is saved for the review sheet — this is generated automatically, not a manual step.
-**NOTE**:- OCR confuses to pick '1' and .............
+**NOTE**:- TrOCR confuses to pick numbers especially '1'.
 
 **Stage 5 — Excel generation.** `openpyxl`-based generation with embedded (not just linked) images, matching the required 15-column schema, plus the auto-generated review workbook.
 
@@ -61,7 +61,6 @@ PDF → page-classification → photo crop → text-region crop → OCR → fiel
 We are stating these directly rather than hiding them:
 
 1. **Digit-recognition accuracy on printed numerals is currently the weakest link**, specifically for thin-stroke digits (`1`) in this document's font — Tesseract intermittently drops them entirely rather than misreading them, which is a font-specific rendering issue, not a generic OCR-tuning problem. We've mitigated this for the EPIC-number field using a secondary API-based cross-check (Mistral), because EPIC number accuracy is a higher-priority correctness requirement than any other field. **Upcoming plan:** fine-tune an OCR model on this exact document font using our own scanned page corpus, removing the API dependency entirely.
-**NOTE** hum hackathon.............
 
 
 2. **Handwritten-field extraction (mobile numbers) is at proof-of-concept stage**, not production-accuracy — see the Phase 5 section of the demo video for what's implemented vs. planned.
@@ -86,13 +85,18 @@ Output: `output/<pdf-name>.xlsx` (main) and `output/<pdf-name>_review.xlsx` (fla
 
 ## Live Demo
 
-**[live demo link here]**
+Live Website (Frontend): https://creativearun005-maker.github.io/MatdataAI/
+
+
+Backend GitHub Repo: https://github.com/creativearun005-maker/Matdataai-backend
+
 
 Note: hosted on Render's free tier — see *Known Limitations* above regarding the resource-reduced configuration running there.
 
 ## Demo Video
 
-**[video link here]**
+Demo Video (YouTube): https://youtu.be/1s6qwFtKnD0
+
 
 ## Roadmap
 
